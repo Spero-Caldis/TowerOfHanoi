@@ -11,9 +11,17 @@
             <TextField fx:id="diskInput" prefWidth="50"/>
             <Button text="Start Game" onAction="#startGame"/>
         </HBox>
-        <Pane fx:id="gamePane" VBox.vgrow="ALWAYS" style="-fx-background-color: lightgray;">
-            <!-- Center Poles and clickable areas will be added dynamically -->
-        </Pane>
+        <StackPane VBox.vgrow="ALWAYS">
+            <Pane fx:id="gamePane" style="-fx-background-color: lightgray;" />
+            <Pane fx:id="confettiPane" />
+        </StackPane>
+        <Label fx:id="winMessageLabel" text="" alignment="CENTER" style="-fx-font-size: 16px;" VBox.vgrow="NEVER"/>
+        <HBox alignment="BOTTOM_LEFT" spacing="10">
+            <Label fx:id="moveLabel" text="Moves: 0" alignment="CENTER_LEFT" style="-fx-font-size: 16px;" VBox.vgrow="NEVER"/>
+        </HBox>
+        <HBox alignment="BOTTOM_RIGHT" spacing="10">
+            <Label fx:id="timerLabel" text="Time: 0.00 seconds" alignment="CENTER_RIGHT" style="-fx-font-size: 16px;" VBox.vgrow="NEVER"/>
+        </HBox>
     </children>
     <padding>
         <Insets top="10" right="10" bottom="10" left="10"/>

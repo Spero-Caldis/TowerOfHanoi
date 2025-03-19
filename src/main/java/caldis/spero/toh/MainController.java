@@ -1,14 +1,14 @@
 package caldis.spero.toh;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.Pane;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.shape.StrokeType;
+import javafx.stage.Stage;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainController {
 
@@ -16,117 +16,139 @@ public class MainController {
     private TextField diskInput;
     @FXML
     private Pane gamePane;
+    @FXML
+    private Label moveLabel;
+    @FXML
+    private Label timerLabel; // Label for the timer
+    @FXML
+    private Label winMessageLabel; // Label for the win message
+    @FXML
+    private Pane confettiPane; // Pane for confetti animation
 
-    private List<Rectangle>[] towers = new ArrayList[3];
-    private int selectedTower = -1;
-    private final double poleBaseX[] = {200, 400, 600};
+    private GameLogic gameLogic;
+    private TimerManager timerManager;
+    private ConfettiAnimator confettiAnimator;
+
+    private int moveCount = 0;
+    private Timer timer;
+    private int countdown = 10;
+    private int numDisks = 3; // Store the number of disks
+    private boolean timerStarted = false; // Flag to check if the timer has started
 
     @FXML
     private void initialize() {
-        for (int i = 0; i < towers.length; i++) {
-            towers[i] = new ArrayList<>();
-        }
+        gameLogic = new GameLogic(this);
+        timerManager = new TimerManager();
+        confettiAnimator = new ConfettiAnimator();
+        diskInput.setOnAction(event -> startGame());
+        moveLabel.setText("Moves: 0");
+        timerLabel.setText("Time: 0.00 seconds"); // Initialize the timer label
+        winMessageLabel.setText(""); // Initialize the win message label
+
+        // Ensure the application closes properly
+        Platform.runLater(() -> {
+            Stage stage = (Stage) gamePane.getScene().getWindow();
+            stage.setOnCloseRequest(event -> handleCloseRequest());
+        });
     }
 
     @FXML
     private void startGame() {
-        gamePane.getChildren().clear();
-        int numDisks = Integer.parseInt(diskInput.getText());
-        double width = 20;
-        double height = 20;
-
-        addPolesAndAreas(numDisks, height);
-
-        for (int i = numDisks; i > 0; i--) {
-            Rectangle disk = new Rectangle(width * i, height);
-            disk.setFill(Color.LIGHTBLUE);
-            disk.setStroke(Color.DARKBLUE);
-            disk.setStrokeWidth(2);
-            disk.setStrokeType(StrokeType.OUTSIDE);
-            disk.setX(poleBaseX[0] - (width * i) / 2);
-            disk.setY(250 - (numDisks - i + 1) * height); // Adjust Y-coordinate
-            towers[0].add(disk);
-            gamePane.getChildren().add(disk);
+        try {
+            numDisks = Integer.parseInt(diskInput.getText());
+        } catch (NumberFormatException e) {
+            numDisks = 3;
         }
+
+        if (numDisks < 3) {
+            numDisks = 3;
+        } else if (numDisks > 12) {
+            numDisks = 12;
+        }
+
+        gameLogic.startGame(numDisks, gamePane);
+        moveCount = 0;
+        updateMoveLabel();
+        resetTimerLabel();
+        winMessageLabel.setText("");
     }
 
-    private void addPolesAndAreas(int numDisks, double diskHeight) {
-        double poleHeight = (numDisks + 1) * diskHeight;
-        gamePane.getChildren().addAll(
-                createClickableArea(100, 0),
-                createClickableArea(300, 1),
-                createClickableArea(500, 2)
-        );
-        gamePane.getChildren().addAll(
-                createPole(200, 0, poleHeight),
-                createPole(400, 1, poleHeight),
-                createPole(600, 2, poleHeight)
-        );
+    public void incrementMoveCount() {
+        moveCount++;
+        updateMoveLabel();
     }
 
-    private Rectangle createClickableArea(double x, int index) {
-        Rectangle area = new Rectangle(x, 50, 200, 200);
-        area.setFill(Color.TRANSPARENT);
-        area.setOnMouseClicked(event -> handlePoleClick(index));
-        return area;
+    public void startTimer() {
+        timerStarted = true;
+        timerManager.startTimer(timerLabel);
     }
 
-    private Rectangle createPole(double x, int index, double height) {
-        Rectangle pole = new Rectangle(x, 250 - height, 10, height);
-        pole.setFill(Color.BLACK);
-        pole.setId("pole-" + index);
-        pole.setOnMouseClicked(event -> handlePoleClick(index));
-        return pole;
+    public void stopTimer() {
+        timerManager.stopTimer();
+        timerStarted = false;
     }
 
-    private void handlePoleClick(int index) {
-        if (selectedTower == -1) {
-            // Select the tower
-            selectedTower = index;
-            highlightPossibleMoves(index);
-        } else {
-            // Try to move the disk
-            if (index != selectedTower && canMoveDisk(selectedTower, index)) {
-                moveDisk(selectedTower, index);
+    public boolean isTimerStarted() {
+        return timerStarted;
+    }
+
+    public int getNumDisks() {
+        return numDisks;
+    }
+
+    public Pane getGamePane() {
+        return gamePane;
+    }
+
+    private void updateMoveLabel() {
+        moveLabel.setText("Moves: " + moveCount);
+    }
+
+    private void resetTimerLabel() {
+        timerLabel.setText("Time: 0.00 seconds");
+    }
+
+    public void displayWinMessage() {
+        double elapsedSeconds = timerManager.getElapsed() / 1000.0;
+        winMessageLabel.setText("You won in " + moveCount + " moves! Time: " + String.format("%.2f", elapsedSeconds) + " seconds.");
+    }
+
+    public void startCountdown() {
+        countdown = 10;
+        timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                Platform.runLater(() -> {
+                    countdown--;
+                    if (countdown > 0) {
+                        timerLabel.setText(String.format("Resetting in %d seconds...", countdown));
+                    } else {
+                        timer.cancel();
+                        resetGame();
+                    }
+                });
             }
-            clearHighlights();
-            selectedTower = -1;
-        }
+        }, 1000, 1000);
     }
 
-    private void highlightPossibleMoves(int from) {
-        for (int i = 0; i < towers.length; i++) {
-            Rectangle pole = (Rectangle) gamePane.lookup("#pole-" + i);
-            if (i == from) {
-                pole.setFill(Color.BLUE);
-            } else if (canMoveDisk(from, i)) {
-                pole.setFill(Color.GREEN);
-            }
-        }
+    public void animateConfetti() {
+        confettiAnimator.animateConfetti(confettiPane, gamePane);
     }
 
-    private void clearHighlights() {
-        for (int i = 0; i < towers.length; i++) {
-            Rectangle pole = (Rectangle) gamePane.lookup("#pole-" + i);
-            pole.setFill(Color.BLACK);
-        }
+    private void handleCloseRequest() {
+        timerManager.stopTimer();
+        Platform.exit();
     }
 
-    private boolean canMoveDisk(int from, int to) {
-        if (towers[from].isEmpty()) return false;
-        if (towers[to].isEmpty()) return true;
-        return towers[to].get(towers[to].size() - 1).getWidth() > towers[from].get(towers[from].size() - 1).getWidth();
-    }
-
-    private void moveDisk(int from, int to) {
-        if (!towers[from].isEmpty()) {
-            Rectangle disk = towers[from].remove(towers[from].size() - 1);
-            towers[to].add(disk);
-
-            double x = poleBaseX[to] - disk.getWidth() / 2;
-            double y = 250 - towers[to].size() * disk.getHeight();
-            disk.setX(x);
-            disk.setY(y);
-        }
+    private void resetGame() {
+        Platform.runLater(() -> {
+            moveLabel.setText("Moves: 0");
+            resetTimerLabel();
+            winMessageLabel.setText("");
+            confettiPane.getChildren().clear();
+            confettiPane.setVisible(false);
+            startGame(); // Start the game with the same number of disks
+        });
     }
 }
