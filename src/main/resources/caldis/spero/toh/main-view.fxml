@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="caldis.spero.toh.MainController">
+    <children>
+        <HBox spacing="10" alignment="CENTER">
+            <Label text="Number of Disks:"/>
+            <TextField fx:id="diskInput" prefWidth="50"/>
+            <Button text="Start Game" onAction="#startGame"/>
+        </HBox>
+        <Pane fx:id="gamePane" VBox.vgrow="ALWAYS" style="-fx-background-color: lightgray;">
+            <!-- Center Poles and clickable areas will be added dynamically -->
+        </Pane>
+    </children>
+    <padding>
+        <Insets top="10" right="10" bottom="10" left="10"/>
+    </padding>
+</VBox>
